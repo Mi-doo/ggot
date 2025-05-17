@@ -91,6 +91,10 @@ func main() {
 
 		fmt.Print(hash)
 
+		if err := file.Close(); err != nil {
+			fmt.Println(err)
+		}
+
 	case "cat-file":
 
 		if os.Args[2] != "-p" {
@@ -99,9 +103,9 @@ func main() {
 
 		fileName := os.Args[3]
 		file, err := os.Open(".git/objects/" + fileName[:2] + "/" + fileName[2:])
-
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 
 		content := bufio.NewReader(file)
@@ -118,6 +122,10 @@ func main() {
 			return
 		}
 		fmt.Print(string(data))
+
+		if err := file.Close(); err != nil {
+			fmt.Println(err)
+		}
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s.\n", cmd)
