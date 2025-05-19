@@ -39,7 +39,7 @@ func main() {
 
 	case "hash-object":
 
-		if os.Args[2] != "-p" {
+		if os.Args[2] != "-w" {
 			fmt.Println("Unknown command")
 			return
 		}
