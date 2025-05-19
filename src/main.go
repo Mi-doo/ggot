@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -135,15 +136,36 @@ func main() {
 		}
 
 		hash := os.Args[3]
-		hashDir := hash[:2]
+		hashDir := fmt.Sprintf(".git/objects/%v/%v", hash[:2], hash[2:])
 
-		content, err := os.ReadDir(".git/objects/" + hashDir)
+		file, err := os.Open(hashDir)
+		defer file.Close()
+
 		if err != nil {
 			fmt.Println("failed to load the directory")
 		}
 
-		for _, c := range content {
-			fmt.Println("- " + c.Name())
+		content := bufio.NewReader(file)
+		z, err := zlib.NewReader(content)
+		defer z.Close()
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		data, err := io.ReadAll(z)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		dataStr := string(data)
+		parts := strings.Split(dataStr, "\\0")
+
+		for _, p := range parts[1:] {
+			name := strings.Split(p, " ")
+			fmt.Println("- " + name[1])
 		}
 
 	default:
