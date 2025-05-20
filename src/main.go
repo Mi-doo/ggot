@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"strings"
@@ -52,40 +53,8 @@ func main() {
 			return
 		}
 
-		content := bufio.NewReader(file)
-		reader, err := io.ReadAll(content)
+		hash, err := writeHandler(file)
 		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		data := fmt.Sprintf("blob %d\\0%s", len(reader), reader)
-
-		var b bytes.Buffer
-		w := zlib.NewWriter(&b)
-		w.Write([]byte(data))
-		w.Close()
-
-		h := sha1.New()
-		h.Write(reader)
-		hash := hex.EncodeToString(h.Sum(nil))
-
-		if err := os.Chdir(".git/objects"); err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		if err := os.Mkdir(hash[:2], 0755); err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		if err := os.Chdir(hash[:2]); err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		if err := os.WriteFile(hash[2:], b.Bytes(), 0755); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -168,8 +137,78 @@ func main() {
 			fmt.Println("- " + name[1])
 		}
 
+	case "write-tree":
+		dir, err := os.ReadDir("./tree")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		for _, d := range dir {
+			dirHandler(d)
+
+		}
+		//store the hashes in the main tree file
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s.\n", cmd)
 
 	}
+}
+
+func writeHandler(file *os.File) (string, error) {
+	content := bufio.NewReader(file)
+	reader, err := io.ReadAll(content)
+	if err != nil {
+		return "", err
+	}
+
+	data := fmt.Sprintf("blob %d\\0%s", len(reader), reader)
+
+	var b bytes.Buffer
+	w := zlib.NewWriter(&b)
+	w.Write([]byte(data))
+	w.Close()
+
+	h := sha1.New()
+	h.Write(reader)
+	hash := hex.EncodeToString(h.Sum(nil))
+
+	if err := os.Chdir(".git/objects"); err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	if err := os.Mkdir(hash[:2], 0755); err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	if err := os.Chdir(hash[:2]); err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	if err := os.WriteFile(hash[2:], b.Bytes(), 0755); err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	return hash, nil
+}
+
+func dirHandler(dir os.DirEntry) {
+	if !dir.IsDir() {
+		file, err := os.Open(dir.Name())
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		defer file.Close()
+
+		hash, err := writeHandler(file)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	//Create blob
+	//return hash
 }
