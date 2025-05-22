@@ -7,7 +7,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"strings"
@@ -143,9 +142,9 @@ func main() {
 			fmt.Println(err)
 			return
 		}
+
 		for _, d := range dir {
 			dirHandler(d)
-
 		}
 		//store the hashes in the main tree file
 	default:
@@ -195,9 +194,13 @@ func writeHandler(file *os.File) (string, error) {
 	return hash, nil
 }
 
-func dirHandler(dir os.DirEntry) {
-	if !dir.IsDir() {
-		file, err := os.Open(dir.Name())
+func dirHandler(entry os.DirEntry) {
+	//what if it was a directory ??
+
+	fileMap := make(map[string]string)
+	if !entry.IsDir() {
+
+		file, err := os.Open(entry.Name())
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -208,7 +211,16 @@ func dirHandler(dir os.DirEntry) {
 		if err != nil {
 			fmt.Println(err)
 		}
+		// add the hash to a hashmap
+		fileMap[entry.Name()] = hash
 	}
 
-	dirHandler(dir)
+	//sort the files by name
+
+	//create the git file
+	// create the header
+	// add the hashmap to the file (another loop)
+
+	//change the directory
+	dirHandler(entry)
 }
