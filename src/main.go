@@ -209,6 +209,6 @@ func dirHandler(dir os.DirEntry) {
 			fmt.Println(err)
 		}
 	}
-	//Create blob
-	//return hash
+
+	dirHandler(dir)
 }
