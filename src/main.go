@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -137,16 +138,9 @@ func main() {
 		}
 
 	case "write-tree":
-		dir, err := os.ReadDir("./tree")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		hash := dirHandler("./tree")
+		fmt.Println(hash)
 
-		for _, d := range dir {
-			dirHandler(d)
-		}
-		//store the hashes in the main tree file
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s.\n", cmd)
 
@@ -191,36 +185,83 @@ func writeHandler(file *os.File) (string, error) {
 		return "", err
 	}
 
+	if err := os.Chdir("../../.."); err != nil {
+		fmt.Println(err)
+		return "", err
+	}
 	return hash, nil
 }
 
-func dirHandler(entry os.DirEntry) {
-	//what if it was a directory ??
+func dirHandler(directory string) string {
+	hashMap := make(map[string]struct {
+		hash  string
+		isDir bool
+	})
 
-	fileMap := make(map[string]string)
-	if !entry.IsDir() {
-
-		file, err := os.Open(entry.Name())
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		defer file.Close()
-
-		hash, err := writeHandler(file)
-		if err != nil {
-			fmt.Println(err)
-		}
-		// add the hash to a hashmap
-		fileMap[entry.Name()] = hash
+	dir, err := os.ReadDir(directory)
+	if err != nil {
+		panic(err)
 	}
 
-	//sort the files by name
+	for _, d := range dir {
+		if !d.IsDir() {
 
-	//create the git file
-	// create the header
-	// add the hashmap to the file (another loop)
+			file, err := os.Open(filepath.Join(directory, d.Name()))
+			if err != nil {
+				panic(err)
+			}
 
-	//change the directory
-	dirHandler(entry)
+			defer file.Close()
+
+			hash, err := writeHandler(file)
+			if err != nil {
+				panic(err)
+			}
+
+			hashMap[d.Name()] = struct {
+				hash  string
+				isDir bool
+			}{
+				hash: hash, isDir: d.IsDir(),
+			}
+		} else {
+			hash := dirHandler(filepath.Join(directory, d.Name()))
+			hashMap[d.Name()] = struct {
+				hash  string
+				isDir bool
+			}{
+				hash: hash, isDir: d.IsDir(),
+			}
+		}
+	}
+
+	var mod int
+	data := fmt.Sprintf("tree %d\\0", len(hashMap))
+	data += data
+	for k, v := range hashMap {
+		if v.isDir {
+			mod = 4000
+		} else {
+
+			mod = 1000
+		}
+		data += fmt.Sprintf("%d %s\\0%s", mod, k, v.hash)
+	}
+
+	var b bytes.Buffer
+	w := zlib.NewWriter(&b)
+	w.Write([]byte(data))
+	w.Close()
+
+	h := sha1.New()
+	h.Write([]byte(data))
+	hash := hex.EncodeToString(h.Sum(nil))
+
+	if err := os.Mkdir("./.git/objects/"+hash[:2], 0755); err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile("./.git/objects/"+hash[:2]+"/"+hash[2:], b.Bytes(), 0755); err != nil {
+		panic(err)
+	}
+	return hash
 }
