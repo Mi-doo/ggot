@@ -141,6 +141,36 @@ func main() {
 		hash := dirHandler("./tree")
 		fmt.Println(hash)
 
+	case "commit-tree":
+		var parent string
+
+		hash := os.Args[2]
+		author := "email@gg.com"
+		commiter := "email@gg.com"
+
+		if os.Args[3] == "-p" {
+			parent = os.Args[4]
+		}
+
+		data := fmt.Sprintf("tree %s\\0 parent %s\\0 author %s\\0 commiter %s\\0", hash, parent, author, commiter)
+
+		var b bytes.Buffer
+		w := zlib.NewWriter(&b)
+		w.Write([]byte(data))
+		w.Close()
+
+		h := sha1.New()
+		h.Write([]byte(data))
+		hash = hex.EncodeToString(h.Sum(nil))
+
+		if err := os.Mkdir("./.git/objects/"+hash[:2], 0755); err != nil {
+			panic(err)
+		}
+		if err := os.WriteFile("./.git/objects/"+hash[:2]+"/"+hash[2:], b.Bytes(), 0755); err != nil {
+			panic(err)
+		}
+		fmt.Println(hash)
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s.\n", cmd)
 
