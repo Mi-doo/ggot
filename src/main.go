@@ -114,7 +114,7 @@ func main() {
 			fmt.Println("failed to load the directory")
 		}
 
-		content := bufio.NewReader(file)
+		content := bufio.NewReader(file) // creates a buffer that contains the file
 		z, err := zlib.NewReader(content)
 		defer z.Close()
 
@@ -160,7 +160,7 @@ func main() {
 		w.Close()
 
 		h := sha1.New()
-		h.Write([]byte(data))
+		h.Write(b.Bytes())
 		hash = hex.EncodeToString(h.Sum(nil))
 
 		if err := os.Mkdir("./.git/objects/"+hash[:2], 0755); err != nil {
@@ -192,7 +192,7 @@ func writeHandler(file *os.File) (string, error) {
 	w.Close()
 
 	h := sha1.New()
-	h.Write(reader)
+	h.Write(b.Bytes())
 	hash := hex.EncodeToString(h.Sum(nil))
 
 	if err := os.Chdir(".git/objects"); err != nil {
@@ -279,12 +279,12 @@ func dirHandler(directory string) string {
 	}
 
 	var b bytes.Buffer
-	w := zlib.NewWriter(&b)
+	w := zlib.NewWriter(&b) // writes into b
 	w.Write([]byte(data))
 	w.Close()
 
 	h := sha1.New()
-	h.Write([]byte(data))
+	h.Write(b.Bytes())
 	hash := hex.EncodeToString(h.Sum(nil))
 
 	if err := os.Mkdir("./.git/objects/"+hash[:2], 0755); err != nil {
